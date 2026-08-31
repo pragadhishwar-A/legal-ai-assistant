@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My AI Legal Assistant</title>
+    <style>
+        body { font-family: sans-serif; max-width: 700px; margin: 40px auto; }
+        #chat-box { border: 1px solid #ccc; padding: 15px; height: 300px; overflow-y: auto; margin-bottom: 10px; }
+        input, button { padding: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>My AI Legal Assistant</h1>
+
+    <p><strong>Step 1:</strong> Upload a PDF</p>
+    <input type="file" id="fileInput" accept=".pdf">
+    <button onclick="uploadFile()">Upload</button>
+    <p id="uploadStatus"></p>
+
+    <p><strong>Step 2:</strong> Ask a question about it</p>
+    <div id="chat-box"></div>
+    <input type="text" id="questionInput" placeholder="Ask a question..." style="width: 70%;">
+    <button onclick="askQuestion()">Ask</button>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const status = document.getElementById("uploadStatus");
+            if (!fileInput.files.length) {
+                status.textContent = "Please choose a file first.";
+                return;
+            }
+            status.textContent = "Uploading and processing... this may take a moment.";
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            const response = await fetch("/upload", { method: "POST", body: formData });
+            const result = await response.json();
+            status.textContent = result.message || result.error;
+        }
+
+        async function askQuestion() {
+            const input = document.getElementById("questionInput");
+            const chatBox = document.getElementById("chat-box");
+            const question = input.value;
+            if (!question) return;
+
+            chatBox.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
+            input.value = "";
+            chatBox.innerHTML += `<p><em>Thinking...</em></p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const response = await fetch("/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: question })
+            });
+            const result = await response.json();
+
+            // Replace the "Thinking..." message with the real answer.
+            chatBox.innerHTML = chatBox.innerHTML.replace("<p><em>Thinking...</em></p>", "");
+            chatBox.innerHTML += `<p><strong>Assistant:</strong> ${result.answer || result.error}</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>
