@@ -1,67 +1,128 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My AI Legal Assistant</title>
-    <style>
-        body { font-family: sans-serif; max-width: 700px; margin: 40px auto; }
-        #chat-box { border: 1px solid #ccc; padding: 15px; height: 300px; overflow-y: auto; margin-bottom: 10px; }
-        input, button { padding: 8px; font-size: 14px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ledger — Legal Document Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-    <h1>My AI Legal Assistant</h1>
+<body data-theme="light">
 
-    <p><strong>Step 1:</strong> Upload a PDF</p>
-    <input type="file" id="fileInput" accept=".pdf">
-    <button onclick="uploadFile()">Upload</button>
-    <p id="uploadStatus"></p>
+  <a class="skip-link" href="#question-input">Skip to question input</a>
 
-    <p><strong>Step 2:</strong> Ask a question about it</p>
-    <div id="chat-box"></div>
-    <input type="text" id="questionInput" placeholder="Ask a question..." style="width: 70%;">
-    <button onclick="askQuestion()">Ask</button>
+  <div class="app-shell">
 
-    <script>
-        async function uploadFile() {
-            const fileInput = document.getElementById("fileInput");
-            const status = document.getElementById("uploadStatus");
-            if (!fileInput.files.length) {
-                status.textContent = "Please choose a file first.";
-                return;
-            }
-            status.textContent = "Uploading and processing... this may take a moment.";
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar" aria-label="Document and settings">
+      <div class="brand">
+        <span class="brand-mark">Ledger</span>
+        <span class="brand-tag">document assistant</span>
+      </div>
 
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
+      <section class="panel" aria-labelledby="upload-heading">
+        <h2 id="upload-heading">Your document</h2>
 
-            const response = await fetch("/upload", { method: "POST", body: formData });
-            const result = await response.json();
-            status.textContent = result.message || result.error;
-        }
+        <div class="dropzone" id="dropzone" tabindex="0" role="button"
+             aria-describedby="dropzone-hint">
+          <div class="dropzone-icon" aria-hidden="true">📄</div>
+          <p class="dropzone-text" id="dropzone-hint">
+            Drag a PDF here, or click to choose a file
+          </p>
+          <input type="file" id="fileInput" accept=".pdf" aria-label="Upload PDF document">
+        </div>
 
-        async function askQuestion() {
-            const input = document.getElementById("questionInput");
-            const chatBox = document.getElementById("chat-box");
-            const question = input.value;
-            if (!question) return;
+        <div class="progress-track" id="progressTrack" aria-hidden="true">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
 
-            chatBox.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
-            input.value = "";
-            chatBox.innerHTML += `<p><em>Thinking...</em></p>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
+        <div class="doc-status" id="docStatus" data-state="empty" role="status">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="docStatusText">No document uploaded yet</span>
+        </div>
+      </section>
 
-            const response = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ question: question })
-            });
-            const result = await response.json();
+      <section class="panel" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Preferences</h2>
 
-            // Replace the "Thinking..." message with the real answer.
-            chatBox.innerHTML = chatBox.innerHTML.replace("<p><em>Thinking...</em></p>", "");
-            chatBox.innerHTML += `<p><strong>Assistant:</strong> ${result.answer || result.error}</p>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    </script>
+        <div class="settings-row">
+          <span id="theme-label">Theme</span>
+          <div class="segmented" role="group" aria-labelledby="theme-label">
+            <button type="button" data-theme-choice="light" aria-pressed="true">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+            <button type="button" data-theme-choice="auto" aria-pressed="false">Auto</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span id="density-label">Density</span>
+          <div class="segmented" role="group" aria-labelledby="density-label">
+            <button type="button" data-density-choice="comfortable" aria-pressed="true">Comfortable</button>
+            <button type="button" data-density-choice="compact" aria-pressed="false">Compact</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span>Guided tour</span>
+          <button type="button" class="icon-btn" id="restartTourBtn">Show tour</button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ============ MAIN CHAT AREA ============ -->
+    <main class="main" id="main-content">
+      <header class="chat-header">
+        <h1>Ask about your document</h1>
+        <span class="trust-badge">
+          <span aria-hidden="true">🔒</span> Answers grounded in your document
+        </span>
+      </header>
+
+      <div class="chat-log" id="chatLog" role="log" aria-live="polite" aria-relevant="additions">
+        <div class="empty-state" id="emptyState">
+          <h2>Nothing here yet</h2>
+          <p>Upload a PDF on the left, then ask a question about it — like "What is the notice period for termination?"</p>
+        </div>
+      </div>
+
+      <form class="composer" id="composerForm" novalidate>
+        <div style="flex:1;">
+          <label for="question-input" class="sr-only">Ask a question about your document</label>
+          <input
+            type="text"
+            id="question-input"
+            name="question"
+            placeholder="Ask a question about your document…"
+            aria-describedby="question-error"
+            disabled
+          >
+          <div class="field-error" id="question-error" role="alert"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="askBtn" disabled>
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="btn-label">Ask</span>
+        </button>
+      </form>
+    </main>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-region" id="toastRegion" aria-live="assertive" aria-atomic="true"></div>
+
+  <!-- Onboarding tour -->
+  <div class="tour-overlay" id="tourOverlay"></div>
+  <div class="tour-tooltip" id="tourTooltip" role="dialog" aria-modal="true" aria-labelledby="tourText" style="display:none;">
+    <p id="tourText"></p>
+    <div class="tour-actions">
+      <span class="tour-step-count" id="tourStepCount"></span>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="icon-btn" id="tourSkipBtn">Skip</button>
+        <button type="button" class="btn btn-primary" id="tourNextBtn"><span class="btn-label">Next</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
