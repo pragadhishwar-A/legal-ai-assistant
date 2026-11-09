@@ -5,7 +5,14 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
-
+import config
+# in ingest_document:
+embeddings_for_reset = OllamaEmbeddings(model=config.EMBEDDING_MODEL)
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=config.CHUNK_SIZE,
+    chunk_overlap=config.CHUNK_OVERLAP,
+)
+embeddings = OllamaEmbeddings(model=config.EMBEDDING_MODEL)
 
 def ingest_document(pdf_path, collection_name="legal_docs"):
     """
