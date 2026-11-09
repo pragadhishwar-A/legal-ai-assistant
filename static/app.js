@@ -228,7 +228,12 @@ composerForm.addEventListener("submit", async (e) => {
     removeSkeleton();
 
     if (!response.ok) throw new Error(result.error || "Something went wrong.");
-    addMessage(result.answer, "assistant");
+    let displayText = result.answer;
+    if (result.sources && result.sources.length > 0) {
+    const pageList = result.sources.map(s => s.page).join(", ");
+    displayText += `\n\nPage No: ${pageList}`;
+  }
+  addMessage(displayText, "assistant");
   } catch (err) {
     removeSkeleton();
     addMessage(err.message || "Something went wrong. Please try again.", "error");
